@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "dgSpecHash": "/AEbalw3FeBQwsy/pO+8CaeLwbAXjQdsT4bSrEVyUmLusSj0M/uCAEICjk/PWJ2ilSesU/u11XIjxSbk+vy1Dg==",
+  "success": true,
+  "projectFilePath": "D:\\Projects\\AcumaticaValidator\\AcumaticaValidator\\AcumaticaValidator.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Anjo\\.nuget\\packages\\devexpress.data\\23.2.4\\devexpress.data.23.2.4.nupkg.sha512",
+    "C:\\Users\\Anjo\\.nuget\\packages\\microsoft.netcore.platforms\\3.1.4\\microsoft.netcore.platforms.3.1.4.nupkg.sha512",
+    "C:\\Users\\Anjo\\.nuget\\packages\\microsoft.win32.systemevents\\4.7.0\\microsoft.win32.systemevents.4.7.0.nupkg.sha512",
+    "C:\\Users\\Anjo\\.nuget\\packages\\system.collections.immutable\\8.0.0\\system.collections.immutable.8.0.0.nupkg.sha512",
+    "C:\\Users\\Anjo\\.nuget\\packages\\system.drawing.common\\4.7.2\\system.drawing.common.4.7.2.nupkg.sha512",
+    "C:\\Users\\Anjo\\.nuget\\packages\\system.reflection.metadata\\8.0.0\\system.reflection.metadata.8.0.0.nupkg.sha512",
+    "C:\\Users\\Anjo\\.nuget\\packages\\system.reflection.metadataloadcontext\\8.0.0\\system.reflection.metadataloadcontext.8.0.0.nupkg.sha512",
+    "C:\\Users\\Anjo\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\6.0.0\\system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
