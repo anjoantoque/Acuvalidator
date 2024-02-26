@@ -31,13 +31,13 @@ namespace AcumaticaValidator
 			Console.WriteLine("Enter Project Bin Path: ");
 			binPath = Console.ReadLine();
 
-            Assembly.LoadFrom(Path.Combine(binPath, "PX.Data.dll"));
-            Assembly.LoadFrom(Path.Combine(binPath, "PX.Objects.dll"));
+			Assembly.LoadFrom(Path.Combine(binPath, "PX.Data.dll"));
+			Assembly.LoadFrom(Path.Combine(binPath, "PX.Objects.dll"));
 
-            bool validBin = ValidZipPath(zipPath);
+			bool validBin = ValidZipPath(zipPath);
 
 
-			if(validZip && validBin)
+			if (validZip && validBin)
 			{
 				string outputPath = ExtractZIP(zipPath, binPath);
 
@@ -98,7 +98,7 @@ namespace AcumaticaValidator
 
 				if (Directory.Exists(outputPath))
 				{
-					Directory.Delete(outputPath, true);
+					DeleteExtractedZip(outputPath);
 				}
 
 				ZipFile.ExtractToDirectory(zipPath, outputPath);
@@ -133,7 +133,19 @@ namespace AcumaticaValidator
 		{
 			try
 			{
-				File.Delete(path);
+				foreach (var file in Directory.GetFiles(path))
+				{
+					//set attribute normal to files inside the package
+					File.SetAttributes(file, FileAttributes.Normal);
+				}
+
+				foreach (var file in Directory.GetFiles(Path.Combine(path, BINFOLDER)))
+				{
+					//set attribute normal to files inside the package > Bin
+					File.SetAttributes(file, FileAttributes.Normal);
+				}
+
+				Directory.Delete(path, true);
 			}
 			catch (Exception ex)
 			{
@@ -169,7 +181,7 @@ namespace AcumaticaValidator
 
 				string regExPattern = @"usr\w+";
 				List<string> usrFields = new List<string>();
-				
+
 				//Get all usr fields from all classes in the package
 				foreach (XmlNode graph in graphs)
 				{
@@ -200,7 +212,7 @@ namespace AcumaticaValidator
 					{
 						var colName = col.Attributes?.GetNamedItem("ColumnName")?.Value;
 
-						if(!string.IsNullOrEmpty(colName))
+						if (!string.IsNullOrEmpty(colName))
 						{
 							colNames.Add(colName);
 						}
@@ -212,16 +224,16 @@ namespace AcumaticaValidator
 				//Validate USR Fields
 				foreach (string usrField in usrFields)
 				{
-					if(!colNames.Where(t => t.ToLower() == usrField.ToLower()).Any()) 
+					if (!colNames.Where(t => t.ToLower() == usrField.ToLower()).Any())
 					{
-						if(!missingFields.Where(t => t.ToLower() == usrField.ToLower()).Any())
+						if (!missingFields.Where(t => t.ToLower() == usrField.ToLower()).Any())
 						{
 							missingFields.Add(usrField);
 						}
 					}
 				}
 
-				if(missingFields.Any()) 
+				if (missingFields.Any())
 				{
 					Console.WriteLine("Possible missing field: " + string.Join(", ", missingFields));
 				}
@@ -239,7 +251,7 @@ namespace AcumaticaValidator
 			}
 
 		}
-		
+
 		protected static List<string> GetUsrFieldsFromDLL(string outputZipPath)
 		{
 			List<string> fields = new List<string>();
@@ -252,7 +264,7 @@ namespace AcumaticaValidator
 			{
 				var assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(file);
 				//var assembly = Assembly.ReflectionOnlyLoadFrom(file);
-				
+
 				foreach (var type in assembly.GetTypes())
 				{
 					if (!type.IsClass) continue;
@@ -261,11 +273,16 @@ namespace AcumaticaValidator
 
 					foreach (var prop in type.GetProperties())
 					{
-						if(fields.Contains(prop.Name) || !(prop.Name.ToLower().StartsWith("usr"))) continue;
+						if (fields.Contains(prop.Name) || !(prop.Name.ToLower().StartsWith("usr"))) continue;
 
 						fields.Add(prop.Name);
 					}
 
+				}
+
+				if (assembly != null)
+				{
+					Assembly.UnsafeLoadFrom(file);
 				}
 			}
 
