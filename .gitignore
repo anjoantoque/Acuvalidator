@@ -13,7 +13,12 @@ nupkg/
 
 # Visual Studio
 .vs/
-
+AcumaticaValidatorAcumaticaValidator/bin
+AcumaticaValidator/bin
+AcumaticaValidatorAcumaticaValidator/obj
+AcumaticaValidator/obj
+AcumaticaValidatorAcumaticaValidator/.vs
+AcumaticaValidator/.vs
 # Fleet
 .fleet/
 
