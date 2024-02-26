@@ -1,8 +1,10 @@
 ﻿using DevExpress.Utils.Native;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using System.Text.RegularExpressions;
@@ -12,39 +14,80 @@ namespace AcumaticaValidator
 {
 	public class Program
 	{
-		public const string FOLDERNAME = "AcumaticaValidator";
+		public const string APPLICATIONFOLDERNAME = "Application";
+		public const string OUTPUTFOLDERNAME = "AcumaticaValidator";
 		public const string XMLFILENAME = "project.xml";
-		public const string BINFOLDER = "Bin";
+		public const string BINFOLDERNAME = "Bin";
+		public const string TEMPFOLDERNAME = "Temp";
 
 		public static string EXTRACTEDZIPPATH = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-
 		static void Main()
 		{
+			Main(false);
+		}
+		static void Main(bool reset)
+		{
+			if(!reset)
+			{
+				ClearTemFolder();
+			}
+
 			string zipPath = string.Empty;
 			string binPath = string.Empty;
-			//Console.WriteLine("Output File: " + EXTRACTEDZIPPATH + "\n\n");
+
 			Console.WriteLine("Enter Package Path: ");
 			zipPath = Console.ReadLine();
 
 			bool validZip = ValidZipPath(zipPath);
 
-			Console.WriteLine("Enter Project Bin Path: ");
-			binPath = Console.ReadLine();
+			//get the bin path from the supplied zip path
 
-			Assembly.LoadFrom(Path.Combine(binPath, "PX.Data.dll"));
-			Assembly.LoadFrom(Path.Combine(binPath, "PX.Objects.dll"));
+			if (validZip) 
+			{
+				var directoryPath = zipPath.Split("\\");
+				
+				foreach (var dir in directoryPath)
+				{
+					binPath = Path.Combine(binPath, dir);
 
-			bool validBin = ValidZipPath(zipPath);
+					if (dir.ToLower() == APPLICATIONFOLDERNAME.ToLower())
+					{
+						//if the application folder is found then navigate to the bin folder
+						binPath = Path.Combine(binPath, BINFOLDERNAME);
+						break;
+					}
+				}
+			}
 
+			bool validBin = ValidPath(binPath);
+
+			//if the bin path generate from above is invalid then force user to manually input
+			if (!validBin)
+			{
+				Console.WriteLine("\nFailed to locate Project Bin Path");
+				Console.WriteLine("Enter Project Bin Path: ");
+				binPath = Console.ReadLine();
+
+				validBin = ValidPath(binPath);
+			}
 
 			if (validZip && validBin)
 			{
+				#region Load Acumatica Dependencies DLL
+				Assembly.LoadFrom(Path.Combine(binPath, "PX.Data.dll"));
+				Assembly.LoadFrom(Path.Combine(binPath, "PX.Objects.dll"));
+				#endregion
+
 				string outputPath = ExtractZIP(zipPath, binPath);
 
 				if (!string.IsNullOrEmpty(outputPath))
 				{
 					ValidateProjectXML(outputPath);
 				}
+			}
+			else
+			{
+				Console.WriteLine("\nError: Failed to locate Project Bin or Package Path");
 			}
 
 			ResetApp();
@@ -94,11 +137,11 @@ namespace AcumaticaValidator
 
 			try
 			{
-				outputPath = Path.Combine(EXTRACTEDZIPPATH, FOLDERNAME, new FileInfo(zipPath).Name.Split('.')[0]);
+				outputPath = Path.Combine(EXTRACTEDZIPPATH, OUTPUTFOLDERNAME, new FileInfo(zipPath).Name.Split('.')[0]);
 
 				if (Directory.Exists(outputPath))
 				{
-					DeleteExtractedZip(outputPath);
+					DeleteDirectory(outputPath);
 				}
 
 				ZipFile.ExtractToDirectory(zipPath, outputPath);
@@ -108,17 +151,17 @@ namespace AcumaticaValidator
 				fileInfo.IsReadOnly = false;
 
 				//check if bin path exists for both target and package
-				string outputPathBin = Path.Combine(outputPath, BINFOLDER);
-				if (Directory.Exists(binPath) && Directory.Exists(outputPathBin))
-				{
-					var dllFiles = Directory.GetFiles(binPath, "PX.*").Where(t => Path.GetFileName(t).EndsWith("dll")).ToList();
+				//string outputPathBin = Path.Combine(outputPath, BINFOLDERNAME);
+				//if (Directory.Exists(binPath) && Directory.Exists(outputPathBin))
+				//{
+				//	var dllFiles = Directory.GetFiles(binPath, "PX.*").Where(t => Path.GetFileName(t).EndsWith("dll")).ToList();
 
-					foreach (var file in dllFiles)
-					{
-						var fileName = Path.GetFileName(file);
-						File.Copy(file, Path.Combine(outputPathBin, fileName), false);
-					}
-				}
+				//	foreach (var file in dllFiles)
+				//	{
+				//		var fileName = Path.GetFileName(file);
+				//		File.Copy(file, Path.Combine(outputPathBin, fileName), false);
+				//	}
+				//}
 			}
 			catch (Exception ex)
 			{
@@ -129,21 +172,13 @@ namespace AcumaticaValidator
 			return outputPath;
 		}
 
-		protected static void DeleteExtractedZip(string path)
+		protected static void DeleteDirectory(string path)
 		{
 			try
 			{
-				foreach (var file in Directory.GetFiles(path))
-				{
-					//set attribute normal to files inside the package
-					File.SetAttributes(file, FileAttributes.Normal);
-				}
+				if (!Directory.Exists(path)) return;
 
-				foreach (var file in Directory.GetFiles(Path.Combine(path, BINFOLDER)))
-				{
-					//set attribute normal to files inside the package > Bin
-					File.SetAttributes(file, FileAttributes.Normal);
-				}
+				ClearReadOnly(path);
 
 				Directory.Delete(path, true);
 			}
@@ -235,13 +270,14 @@ namespace AcumaticaValidator
 
 				if (missingFields.Any())
 				{
-					Console.WriteLine("Possible missing field: " + string.Join(", ", missingFields));
+					Console.WriteLine("\nWarning: Possible missing field:\n" + string.Join("\n", missingFields));
 				}
 				else
 				{
 					Console.WriteLine("Everythin looks good. Goodluck sa pag publish. HAHAHAHA");
 				}
-				DeleteExtractedZip(outputZipPath);
+
+				DeleteDirectory(outputZipPath);
 
 			}
 			catch (Exception ex)
@@ -257,13 +293,12 @@ namespace AcumaticaValidator
 			List<string> fields = new List<string>();
 
 			//get assemblies in directory.
-			string folder = Path.Combine(outputZipPath, BINFOLDER);
+			string folder = CopyFilesToTempFolder(Path.Combine(outputZipPath, BINFOLDERNAME));
 			var files = Directory.GetFiles(folder, "*.dll").Where(t => !Path.GetFileName(t).StartsWith("PX")).ToList();
 			//load each assembly.
 			foreach (string file in files)
 			{
 				var assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(file);
-				//var assembly = Assembly.ReflectionOnlyLoadFrom(file);
 
 				foreach (var type in assembly.GetTypes())
 				{
@@ -277,25 +312,78 @@ namespace AcumaticaValidator
 
 						fields.Add(prop.Name);
 					}
-
-				}
-
-				if (assembly != null)
-				{
-					Assembly.UnsafeLoadFrom(file);
 				}
 			}
 
 			return fields;
 		}
 
+		protected static string CopyFilesToTempFolder(string sourcePath)
+		{
+			string outputPath = Path.Combine(EXTRACTEDZIPPATH, OUTPUTFOLDERNAME, TEMPFOLDERNAME, Guid.NewGuid().ToString());
+
+			try
+			{
+				if(!Directory.Exists(outputPath))
+				{
+					Directory.CreateDirectory(outputPath);
+				}
+
+				CopyFilesRecursively(sourcePath, outputPath);
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine(ex.Message);
+				ResetApp();
+			}
+
+			return outputPath;
+		}
 
 		protected static void ResetApp()
 		{
 			Console.WriteLine("\n");
-			Main();
+			
+			Main(true);
 		}
 
+		protected static void ClearTemFolder()
+		{
+			DeleteDirectory(Path.Combine(EXTRACTEDZIPPATH, OUTPUTFOLDERNAME, TEMPFOLDERNAME));
+		}
+
+		protected static void ClearReadOnly(string path)
+		{
+			var parentDirectory = new DirectoryInfo(path);
+
+			if (parentDirectory != null)
+			{
+				parentDirectory.Attributes = FileAttributes.Normal;
+				foreach (FileInfo fi in parentDirectory.GetFiles())
+				{
+					fi.Attributes = FileAttributes.Normal;
+				}
+				foreach (DirectoryInfo di in parentDirectory.GetDirectories())
+				{
+					ClearReadOnly(di.FullName);
+				}
+			}
+		}
+
+		private static void CopyFilesRecursively(string sourcePath, string targetPath)
+		{
+			//Now Create all of the directories
+			foreach (string dirPath in Directory.GetDirectories(sourcePath, "*", SearchOption.AllDirectories))
+			{
+				Directory.CreateDirectory(dirPath.Replace(sourcePath, targetPath));
+			}
+
+			//Copy all the files & Replaces any files with the same name
+			foreach (string newPath in Directory.GetFiles(sourcePath, "*.*", SearchOption.AllDirectories))
+			{
+				File.Copy(newPath, newPath.Replace(sourcePath, targetPath), true);
+			}
+		}
 		#endregion
 
 	}
