@@ -1,2 +1,0 @@
-D:\Projects\AcumaticaValidator\publish\AcumaticaValidator.pdb
-D:\Projects\AcumaticaValidator\publish\AcumaticaValidator.exe
