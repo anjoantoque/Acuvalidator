@@ -31,7 +31,11 @@ namespace AcumaticaValidator
 			Console.WriteLine("Enter Project Bin Path: ");
 			binPath = Console.ReadLine();
 
-			bool validBin = ValidZipPath(zipPath);
+            Assembly.LoadFrom(Path.Combine(binPath, "PX.Data.dll"));
+            Assembly.LoadFrom(Path.Combine(binPath, "PX.Objects.dll"));
+
+            bool validBin = ValidZipPath(zipPath);
+
 
 			if(validZip && validBin)
 			{
