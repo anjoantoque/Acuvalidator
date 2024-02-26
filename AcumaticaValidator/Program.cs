@@ -225,6 +225,10 @@ namespace AcumaticaValidator
 				{
 					Console.WriteLine("Possible missing field: " + string.Join(", ", missingFields));
 				}
+				else
+				{
+					Console.WriteLine("Everythin looks good. Goodluck sa pag publish. HAHAHAHA");
+				}
 			}
 			catch (Exception ex)
 			{
@@ -249,11 +253,17 @@ namespace AcumaticaValidator
 				
 				foreach (var type in assembly.GetTypes())
 				{
-					if (!type.IsClass || type.IsNotPublic) continue;
-					if (type is CommandBase)
+					if (!type.IsClass) continue;
+					//Console.WriteLine(type?.BaseType?.Name);
+					if (!(type?.BaseType?.Name.StartsWith("PXCacheExtension")) ?? true) continue;
+
+					foreach (var prop in type.GetProperties())
 					{
-						var command = Activator.CreateInstance(type) as CommandBase;
+						if(fields.Contains(prop.Name) || !(prop.Name.ToLower().StartsWith("usr"))) continue;
+
+						fields.Add(prop.Name);
 					}
+
 				}
 			}
 
