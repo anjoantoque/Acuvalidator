@@ -19,6 +19,10 @@ AcumaticaValidatorAcumaticaValidator/obj
 AcumaticaValidator/obj
 AcumaticaValidatorAcumaticaValidator/.vs
 AcumaticaValidator/.vs
+
+*.dll
+*.pdb
+
 # Fleet
 .fleet/
 
