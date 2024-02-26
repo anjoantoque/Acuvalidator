@@ -189,7 +189,7 @@ namespace AcumaticaValidator
 					}
 				}
 
-				GetUsrFieldsFromDLL(outputZipPath);
+				usrFields.AddRange(GetUsrFieldsFromDLL(outputZipPath));
 
 				List<string> colNames = new List<string>();
 
@@ -229,6 +229,8 @@ namespace AcumaticaValidator
 				{
 					Console.WriteLine("Everythin looks good. Goodluck sa pag publish. HAHAHAHA");
 				}
+				DeleteExtractedZip(outputZipPath);
+
 			}
 			catch (Exception ex)
 			{
