@@ -1,0 +1,4 @@
+*.dll
+AcumaticaValidator/bin
+.vs/
+AcumaticaValidator/obj
