@@ -181,9 +181,12 @@ namespace AcumaticaValidator
 
 				if (missingFields.Any())
 				{
+					string errMsg = "\nWarning: Possible missing field:\n" + string.Join("\n", missingFields);
 					Console.ForegroundColor = ConsoleColor.Red;
-					Console.WriteLine("\nWarning: Possible missing field:\n" + string.Join("\n", missingFields));
+					Console.WriteLine(errMsg);
 					Console.ResetColor();
+
+					throw new Exception(errMsg);
 				}
 				else
 				{
@@ -197,10 +200,8 @@ namespace AcumaticaValidator
 			}
 			catch (Exception ex)
 			{
-				Console.WriteLine(ex.Message);
-				ResetApp();
+				throw new Exception(ex.Message);
 			}
-
 		}
 
 		protected static List<string> GetUsrFieldsFromDLL(string outputZipPath)
