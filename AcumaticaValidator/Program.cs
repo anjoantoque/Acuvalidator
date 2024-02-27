@@ -418,6 +418,13 @@ namespace AcumaticaValidator
                         fields.Add(field.ToLower().Trim());
                     }
                 }
+                else
+                {
+                    string errMsg = "\nWarning: Ignore file was not found";
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine(errMsg);
+                    Console.ResetColor();
+                }
 				
 			}	
 
