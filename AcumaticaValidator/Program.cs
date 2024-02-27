@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -22,26 +23,35 @@ namespace AcumaticaValidator
 		public const string FIELDSIGNOREFILENAME = "fields.ignore";
 
 		public static string EXTRACTEDZIPPATH = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+
+		public static List<string> UNBOUNDFIELDATTRIBUTE = new List<string>()
+		{
+			"PXBoolAttribute",
+			"PXStringAttribute",
+			"PXDecimalAttribute",
+			"PXLongAttribute",
+			"PXIntAttribute",
+			"PXDoubleAttribute",
+			"PXDateAttribute",
+			"PXDateAndTimeAttribute",
+		};
+
 		static void Main()
 		{
-			Main(false);
-		}
-		static void Main(bool reset)
-		{
-			if(!reset)
-			{
-				ClearTemFolder();
-			}
-
-			string zipPath = string.Empty;
-			string binPath = string.Empty;
-
 			Console.WriteLine("Enter Package Path: ");
-			zipPath = Console.ReadLine();
+			string zipPath = Console.ReadLine().Trim();
+
+			AcumaticaValidator(zipPath);
+		}
+		static void AcumaticaValidator(string zipPath = "")
+		{
+			ClearTempFolder();
+
 			bool validZip = ValidZipPath(zipPath);
 
-			//get the bin path from the supplied zip path
+			string binPath = string.Empty;
 
+			//get the bin path from the supplied zip path
 			if (validZip) 
 			{
 				var directoryPath = zipPath.Split("\\");
@@ -66,7 +76,7 @@ namespace AcumaticaValidator
 			{
 				Console.WriteLine("\nFailed to locate Project Bin Path");
 				Console.WriteLine("Enter Project Bin Path: ");
-				binPath = Console.ReadLine();
+				binPath = Console.ReadLine().Trim();
 
 				validBin = ValidPath(binPath);
 			}
@@ -120,11 +130,12 @@ namespace AcumaticaValidator
 				}
 
 				string regExPattern = @"usr\w+";
-				List<string> usrFields = new List<string>();
+				List<Fields> usrFields = new List<Fields>();
 
 				//Get all usr fields from all classes in the package
 				foreach (XmlNode graph in graphs)
 				{
+					string className = graph?.Attributes?.GetNamedItem("ClassName")?.Value ?? string.Empty;
 					string innerText = graph.InnerText;
 
 					Regex regex = new Regex(regExPattern);
@@ -134,27 +145,35 @@ namespace AcumaticaValidator
 					foreach (Match res in result)
 					{
 						string s = res?.Value;
-						if (!string.IsNullOrEmpty(s) && !usrFields.Contains(s))
+						if (!string.IsNullOrEmpty(s) && !usrFields.Where(t => t.ClassName == className && t.Name == s).Any())
 						{
-							usrFields.Add(s);
+							usrFields.Add(new Fields
+							{
+								ClassName = className,
+								Name = s
+							});
 						}
 					}
 				}
 
 				usrFields.AddRange(GetUsrFieldsFromDLL(outputZipPath));
 
-				List<string> colNames = new List<string>();
+				List<Fields> colNames = new List<Fields>();
 
 				//Get usr fields in tables
 				foreach (XmlNode table in tables)
 				{
 					foreach (XmlNode col in table.ChildNodes)
 					{
+						var tableName = col.Attributes?.GetNamedItem("TableName")?.Value;
 						var colName = col.Attributes?.GetNamedItem("ColumnName")?.Value;
 
 						if (!string.IsNullOrEmpty(colName))
 						{
-							colNames.Add(colName);
+							colNames.Add(new Fields { 
+								ClassName = tableName,
+								Name = colName
+							});
 						}
 					}
 				}
@@ -162,17 +181,18 @@ namespace AcumaticaValidator
 
 				List<string> ignoreFields = GetIgnoreFields(zipPath);
 
-				List<string> missingFields = new List<string>();
+				List<Fields> missingFields = new List<Fields>();
 
 				//Validate USR Fields
-				foreach (string usrField in usrFields)
+				foreach (Fields usrField in usrFields)
 				{
-					if (!colNames.Where(t => t.ToLower() == usrField.ToLower()).Any())
+					//if field is an extension then not neccessary to match the classname in the tablename
+					if (!colNames.Where(t => (string.IsNullOrEmpty(t.ExtensionClassName) || t.ClassName == usrField.ClassName) && t.Name.ToLower() == usrField.Name.ToLower()).Any())
 					{
 						//skip field if listed in ignore fields
-						if (ignoreFields.Where(t => t.ToLower() ==usrField.ToLower()).Any()) continue;
+						if (ignoreFields.Where(t => t.ToLower() == usrField.Name.ToLower()).Any()) continue;
 
-						if (!missingFields.Where(t => t.ToLower() == usrField.ToLower()).Any())
+						if (!missingFields.Where(t => t.ClassName == usrField.ClassName && t.Name.ToLower() == usrField.Name.ToLower()).Any())
 						{
 							missingFields.Add(usrField);
 						}
@@ -181,7 +201,15 @@ namespace AcumaticaValidator
 
 				if (missingFields.Any())
 				{
-					string errMsg = "\nWarning: Possible missing field:\n" + string.Join("\n", missingFields);
+					List<string> missing = new List<string>();
+					
+					missingFields.ForEach(t =>
+					{
+						//missing.Add((!string.IsNullOrEmpty(t.ExtensionClassName) ? t.ExtensionClassName : t.ClassName) + "." + t.Name);
+						missing.Add(t.ClassName + "." + t.Name);
+					});
+					
+					string errMsg = "\nWarning: Possible missing field:\n" + string.Join("\n", missing);
 					Console.ForegroundColor = ConsoleColor.Red;
 					Console.WriteLine(errMsg);
 					Console.ResetColor();
@@ -204,9 +232,9 @@ namespace AcumaticaValidator
 			}
 		}
 
-		protected static List<string> GetUsrFieldsFromDLL(string outputZipPath)
+		protected static List<Fields> GetUsrFieldsFromDLL(string outputZipPath)
 		{
-			List<string> fields = new List<string>();
+			List<Fields> fields = new List<Fields>();
 
 			//get assemblies in directory.
 			string folder = CopyFilesToTempFolder(Path.Combine(outputZipPath, BINFOLDERNAME));
@@ -219,15 +247,45 @@ namespace AcumaticaValidator
 				foreach (var type in assembly.GetTypes())
 				{
 					if (!type.IsClass) continue;
-					//Console.WriteLine(type?.BaseType?.Name);
+
+					//TODO: Get the fields here from custom DAC's
+					#region Get the fields from custom DAC's
+
+					#endregion
+
 					if (!(type?.BaseType?.Name.StartsWith("PXCacheExtension")) ?? true) continue;
+
+					#region Get Fields From Extension
 
 					foreach (var prop in type.GetProperties())
 					{
-						if (fields.Contains(prop.Name) || !(prop.Name.ToLower().StartsWith("usr"))) continue;
+						if (fields.Where(t => t.ClassName == type.Name && t.Name == prop.Name).Any() || !(prop.Name.ToLower().StartsWith("usr"))) continue;
 
-						fields.Add(prop.Name);
+						bool isUnboundField = false;
+
+						foreach (var attr in prop.CustomAttributes)
+						{
+							string attrName = attr?.AttributeType?.Name;
+
+							if (UNBOUNDFIELDATTRIBUTE.Contains(attrName))
+							{
+								isUnboundField = true;
+								break;
+							}
+						}
+
+						//skip fields with unbound attribute
+						if (isUnboundField) continue;
+
+						fields.Add(new Fields
+						{
+							ExtensionClassName = type.Name,
+							ClassName = type.BaseType?.GetGenericArguments()?.FirstOrDefault()?.Name,
+							Name = prop.Name,
+						});
 					}
+
+					#endregion
 				}
 			}
 
@@ -325,8 +383,8 @@ namespace AcumaticaValidator
 			}
 			catch (Exception ex)
 			{
-				Console.WriteLine(ex.Message);
-				ResetApp();
+				//Console.WriteLine(ex.Message);
+				//ResetApp();
 			}
 		}
 
@@ -334,10 +392,10 @@ namespace AcumaticaValidator
 		{
 			Console.WriteLine("\n");
 
-			Main(true);
+			Main();
 		}
 
-		protected static void ClearTemFolder()
+		protected static void ClearTempFolder()
 		{
 			DeleteDirectory(Path.Combine(EXTRACTEDZIPPATH, OUTPUTFOLDERNAME, TEMPFOLDERNAME));
 		}
@@ -403,34 +461,42 @@ namespace AcumaticaValidator
 
 			var dir = Directory.GetParent(zipPath);
 
-			if(dir != null)
-            {
-                var filleExists = File.Exists(Path.Combine(dir.FullName, FIELDSIGNOREFILENAME));
+			if (dir != null)
+			{
+				var filleExists = File.Exists(Path.Combine(dir.FullName, FIELDSIGNOREFILENAME));
 
-                if (filleExists)
-                {
-                    var ignoreFields = File.ReadAllLines(Path.Combine(dir.FullName, FIELDSIGNOREFILENAME));
+				if (filleExists)
+				{
+					var ignoreFields = File.ReadAllLines(Path.Combine(dir.FullName, FIELDSIGNOREFILENAME));
 
-                    foreach (var field in ignoreFields)
-                    {
-                        if (fields.Contains(field)) continue;
+					foreach (var field in ignoreFields)
+					{
+						if (fields.Contains(field)) continue;
 
-                        fields.Add(field.ToLower().Trim());
-                    }
-                }
-                else
-                {
-                    string errMsg = "\nWarning: Ignore file was not found";
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine(errMsg);
-                    Console.ResetColor();
-                }
-				
-			}	
+						fields.Add(field.ToLower().Trim());
+					}
+				}
+				else
+				{
+					string errMsg = "\nWarning: Ignore file was not found";
+					Console.ForegroundColor = ConsoleColor.Yellow;
+					Console.WriteLine(errMsg);
+					Console.ResetColor();
+				}
+
+			}
 
 			return fields;
 		}
 		#endregion
 
+	}
+
+	public class Fields
+	{
+		public string? ExtensionClassName { get; set; }
+		public string? ClassName { get; set; }
+		public string? Name { get; set; }
+		public string? Type { get; set; }
 	}
 }
