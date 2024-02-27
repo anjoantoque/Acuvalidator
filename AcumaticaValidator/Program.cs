@@ -404,15 +404,21 @@ namespace AcumaticaValidator
 			var dir = Directory.GetParent(zipPath);
 
 			if(dir != null)
-			{
-				var ignoreFields = File.ReadAllLines(Path.Combine(dir.FullName, FIELDSIGNOREFILENAME));
+            {
+                var filleExists = File.Exists(Path.Combine(dir.FullName, FIELDSIGNOREFILENAME));
 
-				foreach (var field in ignoreFields)
-				{
-					if (fields.Contains(field)) continue;
+                if (filleExists)
+                {
+                    var ignoreFields = File.ReadAllLines(Path.Combine(dir.FullName, FIELDSIGNOREFILENAME));
 
-					fields.Add(field.ToLower().Trim());
-				}
+                    foreach (var field in ignoreFields)
+                    {
+                        if (fields.Contains(field)) continue;
+
+                        fields.Add(field.ToLower().Trim());
+                    }
+                }
+				
 			}	
 
 			return fields;
