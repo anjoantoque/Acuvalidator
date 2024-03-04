@@ -1,4 +1,5 @@
 ﻿using DevExpress.Utils.Native;
+using DevExpress.Utils.Serializing;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -37,10 +38,19 @@ namespace AcumaticaValidator
 			"PXDateAndTimeAttribute",
 		};
 
-		static void Main()
+		private static string[] _args;
+
+		static void Main(string[] args)
 		{
-			Console.WriteLine("Enter Package Path: ");
-			string zipPath = Console.ReadLine().Trim();
+			_args= args;
+
+			string zipPath = (_args.Length == 0 ? string.Empty : _args[0]);
+
+			if(string.IsNullOrEmpty(zipPath))
+			{
+				Console.WriteLine("Enter Package Path: ");
+				zipPath = Console.ReadLine().Trim();
+			}
 
 			AcumaticaValidator(zipPath);
 		}
@@ -220,7 +230,7 @@ namespace AcumaticaValidator
 				else
 				{
 					Console.ForegroundColor = ConsoleColor.Green;
-					Console.WriteLine("Everythin looks good. Goodluck sa pag publish. HAHAHAHA");
+					Console.WriteLine("Everything looks good. Goodluck sa pag publish. HAHAHAHA");
 					Console.ResetColor();
 				}
 
@@ -395,7 +405,15 @@ namespace AcumaticaValidator
 		{
 			Console.WriteLine("\n");
 
-			Main();
+			if(_args.Length == 2)
+			{
+				if (_args[1]?.ToLower() == "true")
+				{
+					Environment.Exit(0);
+				}
+			}
+
+			Main(new string[] { });
 		}
 
 		protected static void ClearTempFolder()
