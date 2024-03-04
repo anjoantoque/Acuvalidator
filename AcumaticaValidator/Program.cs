@@ -16,7 +16,7 @@ namespace AcumaticaValidator
 	public class Program
 	{
 		public const string APPLICATIONFOLDERNAME = "Application";
-		public const string OUTPUTFOLDERNAME = "AcumaticaValidator";
+		public const string OUTPUTFOLDERNAME = "Acuvalidator";
 		public const string XMLFILENAME = "project.xml";
 		public const string BINFOLDERNAME = "Bin";
 		public const string TEMPFOLDERNAME = "Temp";
