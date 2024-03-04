@@ -1,5 +1,6 @@
 ﻿using DevExpress.Utils.Native;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -214,7 +215,7 @@ namespace AcumaticaValidator
 					Console.WriteLine(errMsg);
 					Console.ResetColor();
 
-					throw new Exception(errMsg);
+					//throw new Exception(errMsg);
 				}
 				else
 				{
@@ -228,7 +229,9 @@ namespace AcumaticaValidator
 			}
 			catch (Exception ex)
 			{
-				throw new Exception(ex.Message);
+				//throw new Exception(ex.Message);
+				Console.WriteLine(ex.Message);
+				ResetApp();
 			}
 		}
 
